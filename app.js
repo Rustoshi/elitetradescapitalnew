@@ -13,6 +13,11 @@ require("dotenv").config();
 
 const app = express();
 
+// Trust proxy for Vercel (required for secure cookies behind proxy)
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 // Passport config
 require("./config/passport")(passport);
 
@@ -54,6 +59,7 @@ const sessionConfig = {
   cookie: {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "lax" : "strict",
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 };
