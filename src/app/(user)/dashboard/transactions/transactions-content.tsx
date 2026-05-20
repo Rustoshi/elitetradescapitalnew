@@ -285,7 +285,7 @@ export function TransactionsContent({
                       {formatCurrency(tx.amount, tx.asset === "BTC")}
                     </p>
                     <p className="text-xs text-text-muted">
-                      {formatDistanceToNow(new Date(tx.createdAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(tx.backdatedAt || tx.createdAt), { addSuffix: true })}
                     </p>
                   </div>
                 </button>
@@ -383,7 +383,7 @@ export function TransactionsContent({
                     <div className="flex justify-between items-center py-2 border-b border-border">
                       <span className="text-sm text-text-muted">Date</span>
                       <span className="text-sm font-medium text-text-primary">
-                        {format(new Date(selectedTransaction.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                        {format(new Date(selectedTransaction.backdatedAt || selectedTransaction.createdAt), "MMM d, yyyy 'at' h:mm a")}
                       </span>
                     </div>
 

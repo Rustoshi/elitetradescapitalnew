@@ -440,6 +440,7 @@ export interface UserTransaction {
   withdrawalDetails?: Record<string, string>;
   createdAt: Date;
   approvedAt?: Date;
+  backdatedAt?: Date;
 }
 
 export async function getUserRecentTransactions(limit: number = 5): Promise<UserTransaction[]> {
@@ -449,13 +450,18 @@ export async function getUserRecentTransactions(limit: number = 5): Promise<User
     return [];
   }
 
-  const transactions = await collections.transactions()
+  const transactionsRaw = await collections.transactions()
     .find({ userId: toObjectId(session.userId) })
-    .sort({ createdAt: -1 })
-    .limit(limit)
     .toArray() as Transaction[];
 
-  return transactions.map(tx => ({
+  // Sort by backdatedAt if exists, otherwise createdAt (descending)
+  transactionsRaw.sort((a, b) => {
+    const dateA = a.backdatedAt || a.createdAt;
+    const dateB = b.backdatedAt || b.createdAt;
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
+
+  return transactionsRaw.slice(0, limit).map(tx => ({
     id: tx._id.toString(),
     type: tx.type as UserTransaction["type"],
     asset: tx.asset as UserTransaction["asset"],
@@ -463,6 +469,7 @@ export async function getUserRecentTransactions(limit: number = 5): Promise<User
     status: tx.status as UserTransaction["status"],
     description: tx.description,
     createdAt: tx.createdAt,
+    backdatedAt: tx.backdatedAt,
   }));
 }
 
@@ -505,17 +512,25 @@ export async function getUserTransactions(
     query.type = filter.type;
   }
 
-  const [transactionsRaw, total] = await Promise.all([
+  // Fetch all matching transactions for proper sorting by backdatedAt
+  const [allTransactionsRaw, total] = await Promise.all([
     collections.transactions()
       .find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
       .toArray() as Promise<Transaction[]>,
     collections.transactions().countDocuments(query),
   ]);
 
-  const transactions = transactionsRaw.map(tx => ({
+  // Sort by backdatedAt if exists, otherwise createdAt (descending)
+  allTransactionsRaw.sort((a, b) => {
+    const dateA = a.backdatedAt || a.createdAt;
+    const dateB = b.backdatedAt || b.createdAt;
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
+
+  // Apply pagination after sorting
+  const paginatedTransactions = allTransactionsRaw.slice(skip, skip + limit);
+
+  const transactions = paginatedTransactions.map(tx => ({
     id: tx._id.toString(),
     type: tx.type as UserTransaction["type"],
     asset: tx.asset as UserTransaction["asset"],
@@ -527,6 +542,7 @@ export async function getUserTransactions(
     withdrawalDetails: tx.withdrawalDetails,
     createdAt: tx.createdAt,
     approvedAt: tx.approvedAt,
+    backdatedAt: tx.backdatedAt,
   }));
 
   return {

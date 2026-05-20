@@ -803,7 +803,7 @@ function RecentActivityList({
                 <div>
                   <p className="text-sm font-medium text-text-primary">{config.label}</p>
                   <p className="text-[10px] text-text-muted">
-                    {new Date(tx.createdAt).toLocaleDateString("en-US", {
+                    {new Date(tx.backdatedAt || tx.createdAt).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       hour: "2-digit",
